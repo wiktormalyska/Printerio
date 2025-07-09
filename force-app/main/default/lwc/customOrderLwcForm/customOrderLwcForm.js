@@ -1,20 +1,31 @@
 
-import { LightningElement } from 'lwc';
+import { LightningElement,wire } from 'lwc';
 import LightningToast from "lightning/toast";
 import { createRecord } from 'lightning/uiRecordApi';
+import { getObjectInfo, getPicklistValues } from 'lightning/uiObjectInfoApi';
+
 import ORDER_OBJECT from '@salesforce/schema/Order';
 import CONTRACT_OBJECT from '@salesforce/schema/Contract';
 import ACCOUNT_ID_FIELD from '@salesforce/schema/Contract.AccountId';
 import STATUS_FIELD from '@salesforce/schema/Contract.Status';
 import START_DATE_FIELD from '@salesforce/schema/Contract.StartDate';
 import CONTRACT_TERM_FIELD from '@salesforce/schema/Contract.ContractTerm';
-import BILLING_ADDRESS_FIELD from '@salesforce/schema/Contract.BillingAddress';
 
+import BILLING_STREET_FIELD from '@salesforce/schema/Contract.BillingStreet';
+import BILLING_CITY_FIELD from '@salesforce/schema/Contract.BillingCity';
+import BILLING_STATE_FIELD from '@salesforce/schema/Contract.BillingState';
+import BILLING_POSTAL_CODE_FIELD from '@salesforce/schema/Contract.BillingPostalCode';
+import BILLING_COUNTRY_FIELD from '@salesforce/schema/Contract.BillingCountry';
+
+import SHIPPING_STREET_FIELD from '@salesforce/schema/Contract.ShippingStreet';
+import SHIPPING_CITY_FIELD from '@salesforce/schema/Contract.ShippingCity';
+import SHIPPING_STATE_FIELD from '@salesforce/schema/Contract.ShippingState';
+import SHIPPING_POSTAL_CODE_FIELD from '@salesforce/schema/Contract.ShippingPostalCode';
+import SHIPPING_COUNTRY_FIELD from '@salesforce/schema/Contract.ShippingCountry';
 export default class CustomOrderLwcForm extends LightningElement {
 
     //Order Fields
     startDate;
-    status;
     accountId;
     contractTerm = 1;
     shippingAddress = {};
@@ -23,7 +34,6 @@ export default class CustomOrderLwcForm extends LightningElement {
 
     connectedCallback() {
         this.startDate = this.getToday;
-        this.status = this.getContractOptions[0].value;
     }
 
     //OnChange
@@ -33,9 +43,6 @@ export default class CustomOrderLwcForm extends LightningElement {
     handleStartDateChange(event) {
         this.startDate = event.target.value;
     }
-    handleStatusChange(event) {
-        this.status = event.target.value;
-    }
     handleContractTermChange(event) {
         this.contractTerm = event.target.value;
     }
@@ -43,7 +50,7 @@ export default class CustomOrderLwcForm extends LightningElement {
         this.shippingAddress = {
             street: event.detail.street,
             city: event.detail.city,
-            province: event.detail.province,
+            state: event.detail.province,
             postalCode: event.detail.postalCode,
             country: event.detail.country
         }
@@ -61,16 +68,16 @@ export default class CustomOrderLwcForm extends LightningElement {
         this.billingAddress = {
             street: event.detail.street,
             city: event.detail.city,
-            province: event.detail.province,
+            state: event.detail.province,
             postalCode: event.detail.postalCode,
             country: event.detail.country
         }
     }
 
     async handleSubmit() {
+        console.log(this.status);
         if (
             !this.startDate ||
-            !this.status ||
             !this.accountId ||
             !this.contractTerm ||
             !this.shippingAddress ||
@@ -85,10 +92,8 @@ export default class CustomOrderLwcForm extends LightningElement {
             return;
         }
 
-        console.log('Creating Order with the following data:');
-        await this.createContract();
-
-
+        let contract = await this.createContract();
+        console.log(contract.id);
     }
 
     async createContract() {
@@ -97,19 +102,22 @@ export default class CustomOrderLwcForm extends LightningElement {
 
         const fields = {};
         fields[ACCOUNT_ID_FIELD.fieldApiName] = this.accountId;
-        fields[STATUS_FIELD.fieldApiName] = this.status;
+        fields[STATUS_FIELD.fieldApiName] = "Draft";
         fields[START_DATE_FIELD.fieldApiName] = this.startDate;
         fields[CONTRACT_TERM_FIELD.fieldApiName] = this.contractTerm;
-        fields[BILLING_ADDRESS_FIELD.fieldApiName] = this.billingAddress;
+        fields[BILLING_STREET_FIELD.fieldApiName] = this.billingAddress.street;
+        fields[BILLING_CITY_FIELD.fieldApiName] = this.billingAddress.city;
+        fields[BILLING_STATE_FIELD.fieldApiName] = this.billingAddress.state;
+        fields[BILLING_POSTAL_CODE_FIELD.fieldApiName] = this.billingAddress.postalCode;
+        fields[BILLING_COUNTRY_FIELD.fieldApiName] = this.billingAddress.country;
 
-        console.log(JSON.stringify(fields))
         const recordInput = { apiName: CONTRACT_OBJECT.objectApiName, fields };
         try {
             contract = await createRecord(recordInput);
         } catch (error) {
             await LightningToast.show({
                 label: 'Error',
-                message: `Error creating contract: ${error.body.message}`,
+                message: `Error creating contract: ${JSON.stringify(error)}`,
                 variant: 'error',
                 mode: 'sticky'
             }, this);
@@ -124,20 +132,5 @@ export default class CustomOrderLwcForm extends LightningElement {
         var mm = String(today.getMonth() + 1).padStart(2, '0');            
         var yyyy = today.getFullYear();
         return yyyy + '-' + mm + '-' + dd;
-    }
-    get getContractOptions() {
-        return [
-            {
-                label: 'Draft', value: 'Draft'
-            },
-            {
-                label: 'Activated', value: 'Activated'
-            },
-            {
-                label: 'In Approval Process', value: 'In Approval Process'
-            }
-        ]
-    }
-
-
+    }     
 }
